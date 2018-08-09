@@ -18,12 +18,25 @@ def get_string(a_str, len: int):
 
 
 def convert_file(file, dest=None):
-    if dest:
-        out = Path(dest)
-    else:
-        out = Path(file)
+    """
+    :func:`convert_files` converts a file fully from byte to string.
+    Optionally outputs to new file, if not run in batch mode (dest is not None).
 
-    pass
+    Args:
+        file (str): the file name
+        dest (str): the destination file name (default: None)
+
+    Returns:
+        True
+    """
+    
+    p = Path(file)
+
+    out = dest if dest != None else file
+
+    p.rename(out)
+
+    return True
 
 
 def handle_dir(d):
