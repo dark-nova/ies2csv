@@ -32,9 +32,8 @@ def convert_file(file, dest=None):
     
     p = Path(file)
 
-    out = dest if dest != None else file
-
-    p.rename(out)
+    out = Path(file if dest is None else dest)
+    #out.write_text(txt)
 
     return True
 
