@@ -40,10 +40,10 @@ def convert_file(file, dest=None):
     filesize = int.from_bytes(bstr[140:144], byteorder='little')
 
     if len(bstr) != filesize:
-        print('IES file has invalid length specified: ' + file)
+        print('IES file has invalid length specified:', file)
         return False
     elif valid != 1:
-        print('IES file has incorrect value: ' + file)
+        print('IES file has incorrect value:', file)
 
     # `short1` is unnecessary in this port
     rows = int.from_bytes(bstr[146:148], byteorder='little')
@@ -52,14 +52,14 @@ def convert_file(file, dest=None):
     colstr = int.from_bytes(bstr[140:144], byteorder='little')
 
     if cols != colint + colstr:
-        print('IES file has mismatched cols: ' + file)
+        print('IES file has mismatched cols:', file)
         return False
 
     offset_idx = filesize - offset1 - offset2
 
     colnames = {}
 
-    for i in len(range(cols)):
+    for i in range(cols):
         new_offset = offset_idx
         n1 = bstr[new_offset:new_offset+64]
         new_offset += 64
@@ -74,7 +74,7 @@ def convert_file(file, dest=None):
         if typ == 0:
             try:
                 if colnames[pos] is not None:
-                    print('IES file is wrong: ' + file)
+                    print('IES file is wrong:', file, ', value: colnames[pos]')
                     return False
             except KeyError:
                 pass
@@ -82,12 +82,22 @@ def convert_file(file, dest=None):
         else:
             try:
                 if colnames[pos + colint] is not None:
-                    print('IES file is wrong: ' + file)
+                    print('IES file is wrong:', file, ', value: colnames[pos+colint]')
                     return False
             except KeyError:
                 pass
             colnames[pos + colint] = n1
-        # Resume later; currently on line 75 of original
+        
+    csv1 = [] # equivalent to `csv`
+
+    for i in range(cols):
+        if cols[i] is None:
+            print('IES file is wrong: ', file, ', value: cols[i]')
+            return False
+        csv.append(cols[i])
+
+    # Resume translation on line 89
+
 
 
     out = Path(file if dest is None else dest)
@@ -148,4 +158,5 @@ if __name__ == "__main__":
             handle_dir(f)
 
         else:
+            print('File not recognized: ' + f)
             continue
