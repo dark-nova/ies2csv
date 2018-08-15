@@ -17,7 +17,7 @@ LINE = '\n'
 
 def convert_file(file, dest=None):
     """
-    :func:`convert_files` converts a file fully from byte to string.
+    :func:`convert_file` converts a file fully from byte to string.
     Optionally outputs to new file, if not run in batch mode (dest is not None).
 
     Args:
@@ -46,10 +46,10 @@ def convert_file(file, dest=None):
     rows = int.from_bytes(bstr[146:148], byteorder='little')
     cols = int.from_bytes(bstr[148:150], byteorder='little')
     colint = int.from_bytes(bstr[150:152], byteorder='little')
-    colstr = int.from_bytes(bstr[140:144], byteorder='little')
+    colstr = int.from_bytes(bstr[152:154], byteorder='little')
 
     if cols != colint + colstr:
-        print('IES file has mismatched cols:', file)
+        print('IES file has mismatched cols:', file, ' : ', cols, ' != ', colint, '+', colstr)
         return False
 
     offset_idx = filesize - offset1 - offset2 # equivalent to `ms.Seek`, line 50
@@ -59,13 +59,11 @@ def convert_file(file, dest=None):
     for i in range(cols):
         new_offset = offset_idx
         n1 = bstr[new_offset:new_offset+64]
-        new_offset += 64
-        n2 = bstr[new_offset:new_offset+64]
-        new_offset += 64
-        typ = bstr[new_offset:new_offset+2]
+        new_offset += 128 # 64 for 64 bytes + 64 for `n2`
+        typ = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
         new_offset += 6 # 2 for short + 4 for `dummy`
         # `dummy` is unnecessary in this port
-        pos = bstr[new_offset:new_offset+2]
+        pos = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
         new_offset += 2
 
         if typ == 0:
@@ -79,6 +77,7 @@ def convert_file(file, dest=None):
         else:
             try:
                 if colnames[pos + colint] is not None:
+                    print(colnames, colint, pos)
                     print('IES file is wrong:', file, ', value: colnames[pos+colint]')
                     return False
             except KeyError:
@@ -178,7 +177,7 @@ if __name__ == "__main__":
     for f in files:
         if os.path.isfile(f) and f.endswith('.ies'):
             try:
-                pass
+                convert_file(f)
             except NameError:
                 pass
 
