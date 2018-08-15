@@ -92,7 +92,7 @@ def convert_file(file, dest=None):
         if colnames[i] is None:
             print('IES file is wrong: ', file, ', value: cols[i]')
             return False
-        csv[0].append(str(cols[i]))
+        csv[0].append(str(colnames[i]))
 
     offset_idx = filesize - offset2 # equivalent to `ms.Seek`, line 89
 
@@ -116,7 +116,7 @@ def convert_file(file, dest=None):
         for j in range(colstr):
             _l = struct.unpack('<H', bstr[new_offset:new_offset+2])[0] # equivalent to `br.ReadUInt16`, line 110
             new_offset += 2
-            objs[j+colint] = bstr[new_offset:new_offset+l].decode().rstrip(NULL_BYTE) # equivalent to `GetString`
+            objs[j+colint] = bstr[new_offset:new_offset+_l].decode().rstrip(NULL_BYTE) # equivalent to `GetString`
             new_offset += l
 
         for obj in objs.values():
