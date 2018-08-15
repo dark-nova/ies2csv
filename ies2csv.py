@@ -56,8 +56,9 @@ def convert_file(file, dest=None):
 
     colnames = {}
 
+    new_offset = offset_idx
+
     for i in range(cols):
-        new_offset = offset_idx
         n1 = bstr[new_offset:new_offset+64]
         new_offset += 128 # 64 for 64 bytes + 64 for `n2`
         typ = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
@@ -85,18 +86,20 @@ def convert_file(file, dest=None):
             colnames[pos + colint] = n1
         
     csv = [] # equivalent to `csv`
-    csv[0] = []
+    csv.append([])
 
     for i in range(cols):
-        if cols[i] is None:
+        if colnames[i] is None:
             print('IES file is wrong: ', file, ', value: cols[i]')
             return False
         csv[0].append(str(cols[i]))
 
     offset_idx = filesize - offset2 # equivalent to `ms.Seek`, line 89
 
+    new_offset = offset_idx
+
     for i in range(rows):
-        new_offset = offset_idx
+        csv.append([])
         rowid = int.from_bytes(bstr[new_offset:new_offset+4], byteorder='little')
         new_offset += 4
         l = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
