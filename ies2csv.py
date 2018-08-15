@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os, glob
+import sys, os, glob, struct
 from pathlib import Path
 
 usage = """
@@ -12,6 +12,8 @@ Options:
 """
 
 NULL_BYTE = '\x00'
+SEPARATOR = '\t'
+LINE = '\n'
 
 def convert_file(file, dest=None):
     """
@@ -83,13 +85,14 @@ def convert_file(file, dest=None):
                 pass
             colnames[pos + colint] = n1
         
-    csv1 = [] # equivalent to `csv`
+    csv = [] # equivalent to `csv`
+    csv[0] = []
 
     for i in range(cols):
         if cols[i] is None:
             print('IES file is wrong: ', file, ', value: cols[i]')
             return False
-        csv.append(cols[i])
+        csv[0].append(str(cols[i]))
 
     offset_idx = filesize - offset2 # equivalent to `ms.Seek`, line 89
 
@@ -99,12 +102,34 @@ def convert_file(file, dest=None):
         new_offset += 4
         l = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
         new_offset += 2
-        lookupkey = bstr[new_offset:new_offset+l].decode().rstrip(NULL_BYTE)
+        lookupkey = bstr[new_offset:new_offset+l].decode().rstrip(NULL_BYTE) # equivalent to `GetString`
+        new_offset += l
 
         objs = {}
 
+        for j in range(colint):
+            objs[j] = struct.unpack('<f', bstr[new_offset:new_offset+4])[0] # equivalent to `br.ReadSingle`, line 103
+            new_offset += 4
+
+        for j in range(colstr):
+            _l = struct.unpack('<H', bstr[new_offset:new_offset+2])[0] # equivalent to `br.ReadUInt16`, line 110
+            new_offset += 2
+            objs[j+colint] = bstr[new_offset:new_offset+l].decode().rstrip(NULL_BYTE) # equivalent to `GetString`
+            new_offset += l
+
+        for obj in objs.values():
+            if obj is None:
+                print('IES file is wrong: ', file, ', value: obj')
+                return False
+            csv[i+1].append(str(obj)) # equivalent to *both* `csv.WriteField`, lines 120 & 122
+
+    for c in csv:
+        SEPARATOR.join(c)
+
+    txt = LINE.join([SEPARATOR.join(line for line in csv)])
+
     out = Path(file if dest is None else dest)
-    #out.write_text(txt)
+    out.write_text(txt)
 
     return True
 
