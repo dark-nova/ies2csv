@@ -13,11 +13,6 @@ Options:
 
 NULL_BYTE = '\x00'
 
-# from original code; may not be necessary
-def get_string(a_str, len: int):
-    pass
-
-
 def convert_file(file, dest=None):
     """
     :func:`convert_files` converts a file fully from byte to string.
@@ -104,7 +99,7 @@ def convert_file(file, dest=None):
         new_offset += 4
         l = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
         new_offset += 2
-        lookupkey = get_string(bstr[new_offset:], l)
+        lookupkey = bstr[new_offset:new_offset+l].decode().rstrip(NULL_BYTE)
 
         objs = {}
 
