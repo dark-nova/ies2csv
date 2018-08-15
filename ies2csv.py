@@ -55,7 +55,7 @@ def convert_file(file, dest=None):
         print('IES file has mismatched cols:', file)
         return False
 
-    offset_idx = filesize - offset1 - offset2
+    offset_idx = filesize - offset1 - offset2 # equivalent to `ms.Seek`, line 50
 
     colnames = {}
 
@@ -96,9 +96,17 @@ def convert_file(file, dest=None):
             return False
         csv.append(cols[i])
 
-    # Resume translation on line 89
+    offset_idx = filesize - offset2 # equivalent to `ms.Seek`, line 89
 
+    for i in range(rows):
+        new_offset = offset_idx
+        rowid = int.from_bytes(bstr[new_offset:new_offset+4], byteorder='little')
+        new_offset += 4
+        l = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
+        new_offset += 2
+        lookupkey = get_string(bstr[new_offset:], l)
 
+        objs = {}
 
     out = Path(file if dest is None else dest)
     #out.write_text(txt)
