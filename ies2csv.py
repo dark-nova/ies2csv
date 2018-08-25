@@ -12,8 +12,27 @@ Options:
 """
 
 NULL_BYTE = '\x00'
-SEPARATOR = '\t'
+SEPARATOR = ','
 LINE = '\n'
+
+def get_string(bstr):
+    """
+    :func:`get_string` converts a bytestring to a readable string.
+
+    Args:
+        bstr (bytes): the bytestring to decode
+
+    Returns:
+        str: the appropriate string
+    """
+    new_bstr = []
+
+    for i in range(len(bstr)):
+        if int(bstr[i]) != 0:
+            new_bstr.append((int(bstr[i]) ^ 0x1))
+            
+    return bytes(new_bstr).decode(errors='ignore').rstrip(NULL_BYTE)
+
 
 def convert_file(file, dest=None):
     """
@@ -103,9 +122,7 @@ def convert_file(file, dest=None):
         rowid = int.from_bytes(bstr[new_offset:new_offset+4], byteorder='little')
         new_offset += 4
         l = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
-        new_offset += 2
-        lookupkey = bstr[new_offset:new_offset+l].decode().rstrip(NULL_BYTE) # equivalent to `GetString`
-        new_offset += l
+        new_offset += 2 + l # `lookupkey` is unnecessary in this port
 
         objs = {}
 
@@ -116,8 +133,8 @@ def convert_file(file, dest=None):
         for j in range(colstr):
             _l = struct.unpack('<H', bstr[new_offset:new_offset+2])[0] # equivalent to `br.ReadUInt16`, line 110
             new_offset += 2
-            objs[j+colint] = bstr[new_offset:new_offset+_l].decode().rstrip(NULL_BYTE) # equivalent to `GetString`
-            new_offset += l
+            objs[j+colint] = get_string(bstr[new_offset:new_offset+_l])
+            new_offset += _l
 
         for obj in objs.values():
             if obj is None:
@@ -125,10 +142,10 @@ def convert_file(file, dest=None):
                 return False
             csv[i+1].append(str(obj)) # equivalent to *both* `csv.WriteField`, lines 120 & 122
 
-    for c in csv:
-        SEPARATOR.join(c)
+        new_offset += colstr
 
-    txt = LINE.join([SEPARATOR.join(line for line in csv)])
+
+    txt = LINE.join([SEPARATOR.join(line) for line in csv])
 
     out = Path(file if dest is None else dest)
     out.write_text(txt)
@@ -156,6 +173,8 @@ def handle_dir(d):
 
 
 if __name__ == "__main__":
+    outfile = None
+
     try:
         if sys.argv[1] == '-o' or sys.argv[1] == '--output':
             outfile = sys.argv[2]
@@ -180,7 +199,7 @@ if __name__ == "__main__":
     for f in files:
         if os.path.isfile(f) and f.endswith('.ies'):
             try:
-                convert_file(f)
+                convert_file(f, outfile)
             except NameError:
                 pass
 
