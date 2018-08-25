@@ -78,7 +78,7 @@ def convert_file(file, dest=None):
     new_offset = offset_idx
 
     for i in range(cols):
-        n1 = bstr[new_offset:new_offset+64]
+        n1 = get_string(bstr[new_offset:new_offset+64])
         new_offset += 128 # 64 for 64 bytes + 64 for `n2`
         typ = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
         new_offset += 6 # 2 for short + 4 for `dummy`
