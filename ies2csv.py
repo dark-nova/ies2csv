@@ -12,7 +12,7 @@ Options:
 """
 
 NULL_BYTE = '\x00'
-SEPARATOR = ','
+SEPARATOR = '\t'
 LINE = '\n'
 
 def get_string(bstr):
