@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import argparse
 import os
-import glob
 import struct
 from pathlib import Path
 
@@ -151,35 +150,45 @@ def get_rows(
         list: `tsv` with rows populated
 
     """
-    for i in range(nrows):
-        rowid = get_int_from_bytes(bstr[offset:offset+4])
+    for _ in range(nrows):
+        row_id = get_int_from_bytes(bstr[offset:offset+4])
         offset += 4
-        l = get_int_from_bytes(bstr[offset:offset+2])
-        # `lookupkey` is unnecessary in this port.
-        offset += 2 + l
+        # `row_class` is prepended before each record
+        # but is not used in the `.tsv` until column 3.
+        # This has an effect of creating padding before
+        # each "row".
+        # `lookupkey` is unnecessary in this port, since
+        # `row_class` is equivalent to it.
+        row_class = get_int_from_bytes(bstr[offset:offset+2])
+        offset += 2 + row_class
 
         objs = {}
 
-        for j in range(ncols_int):
-            # Equivalent to `br.ReadSingle`, line 103.
-            objs[j] = int(struct.unpack('<f', bstr[offset:offset+4])[0])
-            offset += 4
-
-        for j in range(ncols_str):
-            # Equivalent to `br.ReadUInt16`, line 110.
-            col_len = struct.unpack('<H', bstr[offset:offset+2])[0]
-            offset += 2
-            objs[j+ncols_int] = convert_bytestring(bstr[offset:offset+col_len])
-            offset += col_len
-
         row = []
-        for obj in objs.values():
-            if obj is None:
+
+        for i in range(ncols_int):
+            # Equivalent to `br.ReadSingle`, line 103.
+            col = int(struct.unpack('<f', bstr[offset:offset+4])[0])
+            if col is None:
                 raise Exception(
                     f'IES file {file} is invalid: obj is null'
                     )
-            # Equivalent to *both* `csv.WriteField`, lines 120 & 122.
-            row.append(str(obj))
+            row.append(col)
+            offset += 4
+
+        for i in range(ncols_str):
+            # Equivalent to `br.ReadUInt16`, line 110.
+            # `col_len` is the character length of the current column.
+            col_len = struct.unpack('<H', bstr[offset:offset+2])[0]
+            offset += 2
+            col = convert_bytestring(bstr[offset:offset+col_len])
+            if col is None:
+                raise Exception(
+                    f'IES file {file} is invalid: obj is null'
+                    )
+            row.append(col)
+            offset += col_len
+
         tsv.append(row)
 
         offset += ncols_str
@@ -281,7 +290,13 @@ def batch_convert_dir(directory: Path):
 
     """
     for file in directory.glob('*.ies'):
-        convert_file(file)
+        try:
+            convert_file(file)
+        except Exception as e:
+            print(
+                f"""Exception caught: {e}'
+                {file} was subsequently skipped."""
+                )
 
     return
 
@@ -291,37 +306,5 @@ if __name__ == "__main__":
 
     if args.subcommand == 'file':
         convert_file(args.ies_file, args.output)
-    # try:
-    #     if sys.argv[1] == '-o' or sys.argv[1] == '--output':
-    #         outfile = sys.argv[2]
-    #         files = sys.argv[3:]
-
-    #     elif '--output=' in sys.argv[1]:
-    #         outfile = sys.argv[1].split('=')[1]
-    #         files = sys.argv[2:]
-
-    #     elif sys.argv[1] == '--batch':
-    #         if len(sys.argv) < 3:
-    #             files = ['.']
-    #         else:
-    #             files = sys.argv[2:]
-
-    #     else:
-    #         raise IndexError
-
-    # except IndexError:
-    #     sys.exit(usage)
-
-    # for f in files:
-    #     if os.path.isfile(f) and f.endswith('.ies'):
-    #         try:
-    #             convert_file(f, outfile)
-    #         except NameError:
-    #             pass
-
-    #     elif os.path.isdir(f):
-    #         batch_convert_dir(f)
-
-    #     else:
-    #         print('File not recognized: ' + f)
-    #         continue
+    else:
+        batch_convert_dir(args.directory)
