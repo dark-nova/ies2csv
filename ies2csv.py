@@ -187,23 +187,21 @@ def convert_file(file, dest=None):
     return True
 
 
-def handle_dir(d):
-    """
-    :func:`handle_dir` changes into a directory to traverse and batch-edit .ies files.
-    Once complete, the function changes back to the original directory.
+def batch_convert_dir(directory: Path):
+    """Traverses a `directory` with max-depth of 1 to convert all
+    `.ies` files.
 
     Args:
-        d (str): the string representing the directory's name (usually relative)
+        directory (Path): the directory itself (usually relative)
 
     Returns:
-        True
+        None
+
     """
-    cdir = os.getcwd()
-    os.chdir(d)
-    for file in glob.glob('*.ies'):
+    for file in directory.glob('*.ies'):
         convert_file(file)
-    os.chdir(cdir)
-    return True
+
+    return
 
 
 if __name__ == "__main__":
@@ -238,7 +236,7 @@ if __name__ == "__main__":
                 pass
 
         elif os.path.isdir(f):
-            handle_dir(f)
+            batch_convert_dir(f)
 
         else:
             print('File not recognized: ' + f)
