@@ -5,15 +5,6 @@ import struct
 from pathlib import Path
 
 
-usage = """
-Usage: ies2csv.py ([-o <new-file>] <ies-file> | --batch [<path>])
-
-Options:
-    -o <new-file>, --output=<new-file>  Output to a new file.
-    --batch                             Batch mode.
-    <path>                              Path for batch mode. [default: ./]
-"""
-
 parser = argparse.ArgumentParser(
     description = 'An .ies file to tsv converter'
     )
