@@ -1,6 +1,10 @@
 #!/usr/bin/env python
-import sys, os, glob, struct
+import argparse
+import os
+import glob
+import struct
 from pathlib import Path
+
 
 usage = """
 Usage: ies2csv.py ([-o <new-file>] <ies-file> | --batch [<path>])
@@ -10,6 +14,40 @@ Options:
     --batch                             Batch mode.
     <path>                              Path for batch mode. [default: ./]
 """
+
+parser = argparse.ArgumentParser(
+    description = 'An .ies file to tsv converter'
+    )
+subparser = parser.add_subparsers(
+    help = 'subcommand help',
+    required = True,
+    dest = 'subcommand'
+    )
+
+parser_file = subparser.add_parser(
+    'file',
+    help = 'file help'
+    )
+parser_file.add_argument(
+    '--output', '-o',
+    required = False,
+    type = Path
+    )
+parser_file.add_argument(
+    'ies_file',
+    help = 'The .ies file to convert',
+    type = Path
+    )
+
+parser_batch = subparser.add_parser(
+    'batch',
+    help = 'batch help'
+    )
+parser_batch.add_argument(
+    'directory',
+    help = 'The directory with .ies files to batch convert',
+    type = Path
+    )
 
 NULL_BYTE = '\x00'
 SEPARATOR = '\t'
