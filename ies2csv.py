@@ -62,127 +62,205 @@ def convert_bytestring(bstr: bytes):
     Returns:
         str: the appropriate string
 
-    """     
+    """
     return bytes(
         [(int(b) ^ 0x1) for b in bstr if int(b) != 0]
         ).decode(errors='ignore').rstrip(NULL_BYTE)
 
 
-def convert_file(file, dest=None):
-    """
-    :func:`convert_file` converts a file fully from byte to string.
-    Optionally outputs to new file, if not run in batch mode (dest is not None).
+def get_int_from_bytes(bstr: bytes):
+    """Get `int` from `bytes`. Obviously
+    Uses little endian to convert.
 
     Args:
-        file (str): the file name
-        dest (str): the destination file name (default: None)
+        bstr (bytes): the bytestring chunk to convert
 
     Returns:
-        True if successful; False otherwise
+        int: the number converted
+
     """
-    p = Path(file)
+    return int.from_bytes(bstr, byteoder = 'little')
 
-    bstr = p.read_bytes()
-    table_name = bstr[0:128].decode().rstrip(NULL_BYTE)
-    valid = int.from_bytes(bstr[128:132], byteorder='little') # equivalent to original `val1`
-    offset1 = int.from_bytes(bstr[132:136], byteorder='little')
-    offset2 = int.from_bytes(bstr[136:140], byteorder='little')
-    filesize = int.from_bytes(bstr[140:144], byteorder='little')
 
-    if len(bstr) != filesize:
-        print('IES file has invalid length specified:', file)
-        return False
-    elif valid != 1:
-        print('IES file has incorrect value:', file)
+def get_col_names(bstr: bytes, ncols: int, offset: int, colint: int):
+    """Gets column names from the bytestring of an `.ies` file.
 
-    # `short1` is unnecessary in this port
-    rows = int.from_bytes(bstr[146:148], byteorder='little')
-    cols = int.from_bytes(bstr[148:150], byteorder='little')
-    colint = int.from_bytes(bstr[150:152], byteorder='little')
-    colstr = int.from_bytes(bstr[152:154], byteorder='little')
+    Args:
+        bstr (bytes): the bytestring
+        ncols (int): number of columns
+        offset (int): offset to start from the bytestring
+        colint (int): offset to specific columns
 
-    if cols != colint + colstr:
-        print('IES file has mismatched cols:', file, ' : ', cols, ' != ', colint, '+', colstr)
-        return False
+    Returns:
+        dict: with key = index and value = column name
+    """
+    col_names = {}
+    for _ in range(ncols):
+        col_name = convert_bytestring(bstr[offset:offset+64])
+        # `n2` is unnecessary in this port.
+        # Just add 128; 64 for 64 bytes + 64 for `n2`.
+        offset += 128
+        col_type = get_int_from_bytes(bstr[offset:offset+2])
+        # `dummy` is unnecessary in this port.
+        # Just add 6; 2 for short + 4 for `dummy`.
+        offset += 6
+        col_idx = get_int_from_bytes(bstr[offset:offset+2])
+        offset += 2
 
-    offset_idx = filesize - offset1 - offset2 # equivalent to `ms.Seek`, line 50
-
-    colnames = {}
-
-    new_offset = offset_idx
-
-    for i in range(cols):
-        n1 = convert_bytestring(bstr[new_offset:new_offset+64])
-        new_offset += 128 # 64 for 64 bytes + 64 for `n2`
-        typ = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
-        new_offset += 6 # 2 for short + 4 for `dummy`
-        # `dummy` is unnecessary in this port
-        pos = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
-        new_offset += 2
-
-        if typ == 0:
+        if col_type == 0:
             try:
-                if colnames[pos] is not None:
-                    print('IES file is wrong:', file, ', value: colnames[pos]')
-                    return False
+                if col_names[col_idx]:
+                    raise Exception(
+                        f'IES file {file} is invalid: '
+                        f'{col_names[col_idx]} is not null'
+                        )
             except KeyError:
-                pass
-            colnames[pos] = n1
+                col_names[col_idx] = col_name
         else:
             try:
-                if colnames[pos + colint] is not None:
-                    print(colnames, colint, pos)
-                    print('IES file is wrong:', file, ', value: colnames[pos+colint]')
+                if col_names[col_idx + colint]:
+                    raise Exception(
+                        f'IES file {file} is invalid: '
+                        f'{col_names[col_idx+colint]} is not null')
                     return False
             except KeyError:
-                pass
-            colnames[pos + colint] = n1
-        
-    csv = [] # equivalent to `csv`
-    csv.append([])
+                col_names[col_idx + colint] = col_name
 
-    for i in range(cols):
-        if colnames[i] is None:
-            print('IES file is wrong: ', file, ', value: cols[i]')
-            return False
-        csv[0].append(str(colnames[i]))
+    return col_names
 
-    offset_idx = filesize - offset2 # equivalent to `ms.Seek`, line 89
 
-    new_offset = offset_idx
+def get_rows(
+    bstr: bytes, tsv: list, nrows: int, offset: int, colint: int, colstr: int
+    ):
+    """Gets rows from the bytestring of an `.ies` file.
 
+    Args:
+        bstr (bytes): the bytestring
+        tsv (list): the tsv in list form
+        nrows (int): number of rows
+        offset: offset to specify columns
+        colint (int): offset to specific columns
+        colstr (int): offset to specific columns
+
+    Returns:
+        list: `tsv` with rows populated
+
+    """
     for i in range(rows):
-        csv.append([])
-        rowid = int.from_bytes(bstr[new_offset:new_offset+4], byteorder='little')
-        new_offset += 4
-        l = int.from_bytes(bstr[new_offset:new_offset+2], byteorder='little')
-        new_offset += 2 + l # `lookupkey` is unnecessary in this port
+        rowid = get_int_from_bytes(bstr[offset:offset+4])
+        offset += 4
+        l = get_int_from_bytes(bstr[offset:offset+2])
+        # `lookupkey` is unnecessary in this port.
+        offset += 2 + l
 
         objs = {}
 
         for j in range(colint):
-            objs[j] = struct.unpack('<f', bstr[new_offset:new_offset+4])[0] # equivalent to `br.ReadSingle`, line 103
-            new_offset += 4
+            # Equivalent to `br.ReadSingle`, line 103.
+            objs[j] = struct.unpack('<f', bstr[offset:offset+4])[0]
+            offset += 4
 
         for j in range(colstr):
-            _l = struct.unpack('<H', bstr[new_offset:new_offset+2])[0] # equivalent to `br.ReadUInt16`, line 110
-            new_offset += 2
-            objs[j+colint] = convert_bytestring(bstr[new_offset:new_offset+_l])
-            new_offset += _l
+            # Equivalent to `br.ReadUInt16`, line 110.
+            col_len = struct.unpack('<H', bstr[offset:offset+2])[0]
+            offset += 2
+            objs[j+colint] = convert_bytestring(bstr[offset:offset+col_len])
+            offset += col_len
 
+        row = []
         for obj in objs.values():
-            if obj is None:
-                print('IES file is wrong: ', file, ', value: obj')
-                return False
-            csv[i+1].append(str(obj)) # equivalent to *both* `csv.WriteField`, lines 120 & 122
+            if not obj:
+                raise Exception(
+                    f'IES file {file} is invalid: obj is null'
+                    )
+            # Equivalent to *both* `csv.WriteField`, lines 120 & 122.
+            row.append(str(obj))
+        tsv.append(row)
 
-        new_offset += colstr
+        offset += colstr
+
+    return tsv
 
 
-    txt = LINE.join([SEPARATOR.join(line) for line in csv])
+def convert_file(file: Path, dest: Path = None):
+    """Converts a `file` fully from bytes to string.
+    Optionally outputs to new file `dest`, if not run in batch mode.
+    (`dest` is not None.)
 
-    out = Path(file if dest is None else dest)
-    out.write_text(txt)
+    Args:
+        file (Path): the file to convert
+        dest (Path, optional): the destination output; defaults to None
+
+    Returns:
+        bool: True if successful; False otherwise
+
+    Raises:
+        Exception: if the file was corrupt in any way
+
+    """
+    bstr = file.read_bytes()
+    table_name = bstr[0:128].decode().rstrip(NULL_BYTE)
+    # Equivalent to original `val1`, `offset1`, `offset2`, and `filesize`.
+    # I interpreted it as `value`, but I am unsure.
+    # Four value slicing equivalent to `ReadInt32`.
+    value, offset1, offset2, file_size = [
+        get_int_from_bytes(bstr[i:i+4])
+        for i
+        in (128, 132, 136, 140)
+        ]
+
+    if len(bstr) != file_size:
+        raise Exception(
+            f'IES file {file} has invalid length specified: {len(bstr)}'
+            )
+    if value != 1:
+        raise Exception(
+            f'IES file {file} has incorrect value: {value}'
+            )
+
+    # Equivalent to original `rows`, `cols`, `colint`, and `colstr`.
+    # `short1` is unnecessary in this port.
+    # Two value slicing equivalent to `ReadInt16`.
+    nrows, ncols, colint, colstr = [
+        get_int_from_bytes(bstr[i:i+2])
+        for i
+        in (146, 148, 150, 152)
+        ]
+
+    if ncols != colint + colstr:
+        raise Exception(
+            f'IES file {file} has mismatched cols: {ncols}!={colint}+{colstr}'
+            )
+
+    # Equivalent to `ms.Seek`.`
+    offset_idx = file_size - offset1 - offset2
+
+    col_names = get_col_names(bstr, ncols, offset_idx, colint)
+
+    tsv = []
+
+    row = []
+    for i in range(ncols):
+        if not col_names[i]:
+            raise Exception(
+                f'IES file {file} is invalid: '
+                f'col_names at index {i} is null'
+                )
+        row.append(str(col_names[i]))
+    tsv.append(row)
+
+    offset_idx = file_size - offset2 # equivalent to `ms.Seek`, line 89
+
+    new_offset = offset_idx
+
+    tsv = get_rows(bstr, tsv, nrows, offset)
+
+    out = Path(file.stem if dest is None else dest)
+    out.write_text(
+        LINE.join(
+            [SEPARATOR.join(line) for line in tsv]
+            )
+        )
 
     return True
 
@@ -211,7 +289,7 @@ if __name__ == "__main__":
         if sys.argv[1] == '-o' or sys.argv[1] == '--output':
             outfile = sys.argv[2]
             files = sys.argv[3:]
-            
+
         elif '--output=' in sys.argv[1]:
             outfile = sys.argv[1].split('=')[1]
             files = sys.argv[2:]
