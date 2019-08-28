@@ -1,11 +1,12 @@
 # ies2csv
-#### _A [Tree of Savior][tos] utility._
-
-### Originally authored by **Doddler** on Github here: https://github.com/Doddler/ies2csv
 
 ## Overview
 
-*ies2csv* is a utility meant to convert the `.ies` files found within `.ipf` for Tree of Savior. The original utility was written in *C#* while this implementation written from scratch is written in *Python* for more universal environment.
+`ies2csv` is a utility meant to convert the `.ies` files found within `.ipf` files used by [Tree of Savior][tos] to a readable tab-separated file. `csv` is a misnomer because I discovered some fields in the `.ies` actually have commas, affecting the output from the original `csv` format.
+
+This `ies2csv` is a fork of the [original utility](https://github.com/Doddler/ies2csv), written in C# by [**Doddler**](https://github.com/Doddler). As practice for myself, I re-implemented the code in Python, specifically Python 3.5+.
+
+## Usage
 
 ```
 Usage: ies2csv.py ([-o <new-file>] <ies-file> | --batch [<path>])
@@ -18,6 +19,10 @@ Options:
 
 Default behavior overwrites the supplied file. In batch mode, manual output is disabled.
 
-#### File last modified: 2018-08-03 16:08 (UTC-7)
+## Requirements
+
+This code is designed around the following:
+
+- Python 3.5+
 
 [tos]: https://treeofsavior.com/
