@@ -79,13 +79,16 @@ def get_int_from_bytes(bstr: bytes):
         int: the number converted
 
     """
-    return int.from_bytes(bstr, byteoder = 'little')
+    return int.from_bytes(bstr, byteorder = 'little')
 
 
-def get_col_names(bstr: bytes, ncols: int, offset: int, colint: int):
+def get_col_names(
+    file: Path, bstr: bytes, ncols: int, offset: int, colint: int
+    ):
     """Gets column names from the bytestring of an `.ies` file.
 
     Args:
+        file (Path): the file itself
         bstr (bytes): the bytestring
         ncols (int): number of columns
         offset (int): offset to start from the bytestring
@@ -130,11 +133,13 @@ def get_col_names(bstr: bytes, ncols: int, offset: int, colint: int):
 
 
 def get_rows(
-    bstr: bytes, tsv: list, nrows: int, offset: int, colint: int, colstr: int
+    file: Path, bstr: bytes, tsv: list, nrows: int, offset: int,
+    colint: int, colstr: int
     ):
     """Gets rows from the bytestring of an `.ies` file.
 
     Args:
+        file (Path): the file itself
         bstr (bytes): the bytestring
         tsv (list): the tsv in list form
         nrows (int): number of rows
@@ -146,7 +151,7 @@ def get_rows(
         list: `tsv` with rows populated
 
     """
-    for i in range(rows):
+    for i in range(nrows):
         rowid = get_int_from_bytes(bstr[offset:offset+4])
         offset += 4
         l = get_int_from_bytes(bstr[offset:offset+2])
@@ -235,7 +240,7 @@ def convert_file(file: Path, dest: Path = None):
     # Equivalent to `ms.Seek`.`
     offset_idx = file_size - offset1 - offset2
 
-    col_names = get_col_names(bstr, ncols, offset_idx, colint)
+    col_names = get_col_names(file, bstr, ncols, offset_idx, colint)
 
     tsv = []
 
@@ -251,11 +256,9 @@ def convert_file(file: Path, dest: Path = None):
 
     offset_idx = file_size - offset2 # equivalent to `ms.Seek`, line 89
 
-    new_offset = offset_idx
+    tsv = get_rows(file, bstr, tsv, nrows, offset_idx, colint, colstr)
 
-    tsv = get_rows(bstr, tsv, nrows, offset)
-
-    out = Path(file.stem if dest is None else dest)
+    out = Path(f'{file.stem}.tsv' if dest is None else dest)
     out.write_text(
         LINE.join(
             [SEPARATOR.join(line) for line in tsv]
@@ -283,39 +286,42 @@ def batch_convert_dir(directory: Path):
 
 
 if __name__ == "__main__":
-    outfile = None
+    args = parser.parse_args()
+    print(args)
 
-    try:
-        if sys.argv[1] == '-o' or sys.argv[1] == '--output':
-            outfile = sys.argv[2]
-            files = sys.argv[3:]
+    if args.subcommand == 'file':
+        convert_file(args.ies_file, args.output)
+    # try:
+    #     if sys.argv[1] == '-o' or sys.argv[1] == '--output':
+    #         outfile = sys.argv[2]
+    #         files = sys.argv[3:]
 
-        elif '--output=' in sys.argv[1]:
-            outfile = sys.argv[1].split('=')[1]
-            files = sys.argv[2:]
+    #     elif '--output=' in sys.argv[1]:
+    #         outfile = sys.argv[1].split('=')[1]
+    #         files = sys.argv[2:]
 
-        elif sys.argv[1] == '--batch':
-            if len(sys.argv) < 3:
-                files = ['.']
-            else:
-                files = sys.argv[2:]
+    #     elif sys.argv[1] == '--batch':
+    #         if len(sys.argv) < 3:
+    #             files = ['.']
+    #         else:
+    #             files = sys.argv[2:]
 
-        else:
-            raise IndexError
+    #     else:
+    #         raise IndexError
 
-    except IndexError:
-        sys.exit(usage)
+    # except IndexError:
+    #     sys.exit(usage)
 
-    for f in files:
-        if os.path.isfile(f) and f.endswith('.ies'):
-            try:
-                convert_file(f, outfile)
-            except NameError:
-                pass
+    # for f in files:
+    #     if os.path.isfile(f) and f.endswith('.ies'):
+    #         try:
+    #             convert_file(f, outfile)
+    #         except NameError:
+    #             pass
 
-        elif os.path.isdir(f):
-            batch_convert_dir(f)
+    #     elif os.path.isdir(f):
+    #         batch_convert_dir(f)
 
-        else:
-            print('File not recognized: ' + f)
-            continue
+    #     else:
+    #         print('File not recognized: ' + f)
+    #         continue
