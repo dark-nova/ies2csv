@@ -174,7 +174,7 @@ def get_rows(
 
         row = []
         for obj in objs.values():
-            if not obj:
+            if obj is None:
                 raise Exception(
                     f'IES file {file} is invalid: obj is null'
                     )
@@ -246,7 +246,7 @@ def convert_file(file: Path, dest: Path = None):
 
     row = []
     for i in range(ncols):
-        if not col_names[i]:
+        if col_names[i] is None:
             raise Exception(
                 f'IES file {file} is invalid: '
                 f'col_names at index {i} is null'
