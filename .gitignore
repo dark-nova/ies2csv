@@ -1,3 +1,11 @@
+# Sublime Text
+*.sublime-*
+
+# Python files
+venv
+*__pycache__/*
+*.pyc
+
+# Files output by the script
 *.ies
 *.csv
-__pycache__/*
