@@ -9,3 +9,4 @@ venv
 # Files output by the script
 *.ies
 *.csv
+*.tsv
