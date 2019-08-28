@@ -6,23 +6,65 @@
 
 This `ies2csv` is a fork of the [original utility](https://github.com/Doddler/ies2csv), written in C# by [**Doddler**](https://github.com/Doddler). As practice for myself, I re-implemented the code in Python, specifically Python 3.5+.
 
+Each resulting `.tsv` file has a structure like so:
+- `ncols_int`: number of numeric/integer fields, like `ClassID` (ID) and `NeedCount` (flag)
+- `ncols_str`: the rest of the fields, usually strings
+- `ncols = ncols_int + ncols_str`
+
 ## Usage
 
+### Main
 ```
-Usage: ies2csv.py ([-o <new-file>] <ies-file> | --batch [<path>])
+$ python ies2csv.py -h
+usage: ies2csv.py [-h] {file,batch} ...
 
-Options:
-    -o <new-file>, --output=<new-file>  Output to a new file.
-    --batch                             Batch mode.
-    <path>                              Path for batch mode. [default: ./]
+An .ies file to tsv converter
+
+positional arguments:
+  {file,batch}  subcommand help
+    file        file help
+    batch       batch help
+
+optional arguments:
+  -h, --help    show this help message and exit
 ```
 
-Default behavior overwrites the supplied file. In batch mode, manual output is disabled.
+### File-based operations
+```
+usage: ies2csv.py file [-h] [--output OUTPUT] ies_file
+
+positional arguments:
+  ies_file              The .ies file to convert
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+```
+
+⚠ Default behavior creates a `.tsv` file with the same 'stem' name.
+
+### Batch operations
+```
+$ python ies2csv.py batch -h
+usage: ies2csv.py batch [-h] directory
+
+positional arguments:
+  directory   The directory with .ies files to batch convert
+
+optional arguments:
+  -h, --help  show this help message and exit
+```
+
+⚠ In batch mode, manual output is disabled.
 
 ## Requirements
 
 This code is designed around the following:
 
 - Python 3.5+
+
+## Disclaimer
+
+This project is not affiliated with or endorsed by [Tree of Savior][tos]. See [`LICENSE`](LICENSE) for more detail.
 
 [tos]: https://treeofsavior.com/
