@@ -83,7 +83,7 @@ def get_int_from_bytes(bstr: bytes):
 
 
 def get_col_names(
-    file: Path, bstr: bytes, ncols: int, offset: int, colint: int
+    file: Path, bstr: bytes, ncols: int, offset: int, ncols_int: int
     ):
     """Gets column names from the bytestring of an `.ies` file.
 
@@ -92,7 +92,7 @@ def get_col_names(
         bstr (bytes): the bytestring
         ncols (int): number of columns
         offset (int): offset to start from the bytestring
-        colint (int): offset to specific columns
+        ncols_int (int): offset to specific columns
 
     Returns:
         dict: with key = index and value = column name
@@ -121,20 +121,20 @@ def get_col_names(
                 col_names[col_idx] = col_name
         else:
             try:
-                if col_names[col_idx + colint]:
+                if col_names[col_idx + ncols_int]:
                     raise Exception(
                         f'IES file {file} is invalid: '
-                        f'{col_names[col_idx+colint]} is not null')
+                        f'{col_names[col_idx+ncols_int]} is not null')
                     return False
             except KeyError:
-                col_names[col_idx + colint] = col_name
+                col_names[col_idx + ncols_int] = col_name
 
     return col_names
 
 
 def get_rows(
     file: Path, bstr: bytes, tsv: list, nrows: int, offset: int,
-    colint: int, colstr: int
+    ncols_int: int, ncols_str: int
     ):
     """Gets rows from the bytestring of an `.ies` file.
 
@@ -144,8 +144,8 @@ def get_rows(
         tsv (list): the tsv in list form
         nrows (int): number of rows
         offset: offset to specify columns
-        colint (int): offset to specific columns
-        colstr (int): offset to specific columns
+        ncols_int (int): offset to specific columns
+        ncols_str (int): offset to specific columns
 
     Returns:
         list: `tsv` with rows populated
@@ -160,16 +160,16 @@ def get_rows(
 
         objs = {}
 
-        for j in range(colint):
+        for j in range(ncols_int):
             # Equivalent to `br.ReadSingle`, line 103.
-            objs[j] = struct.unpack('<f', bstr[offset:offset+4])[0]
+            objs[j] = int(struct.unpack('<f', bstr[offset:offset+4])[0])
             offset += 4
 
-        for j in range(colstr):
+        for j in range(ncols_str):
             # Equivalent to `br.ReadUInt16`, line 110.
             col_len = struct.unpack('<H', bstr[offset:offset+2])[0]
             offset += 2
-            objs[j+colint] = convert_bytestring(bstr[offset:offset+col_len])
+            objs[j+ncols_int] = convert_bytestring(bstr[offset:offset+col_len])
             offset += col_len
 
         row = []
@@ -182,7 +182,7 @@ def get_rows(
             row.append(str(obj))
         tsv.append(row)
 
-        offset += colstr
+        offset += ncols_str
 
     return tsv
 
@@ -223,24 +223,25 @@ def convert_file(file: Path, dest: Path = None):
             f'IES file {file} has incorrect value: {value}'
             )
 
-    # Equivalent to original `rows`, `cols`, `colint`, and `colstr`.
+    # Equivalent to original `rows`, `cols`, `ncols_int`, and `ncols_str`.
     # `short1` is unnecessary in this port.
     # Two value slicing equivalent to `ReadInt16`.
-    nrows, ncols, colint, colstr = [
+    nrows, ncols, ncols_int, ncols_str = [
         get_int_from_bytes(bstr[i:i+2])
         for i
         in (146, 148, 150, 152)
         ]
 
-    if ncols != colint + colstr:
+    if ncols != ncols_int + ncols_str:
         raise Exception(
-            f'IES file {file} has mismatched cols: {ncols}!={colint}+{colstr}'
+            f'IES file {file} has mismatched cols: '
+            f'{ncols}!={ncols_int}+{ncols_str}'
             )
 
     # Equivalent to `ms.Seek`.`
     offset_idx = file_size - offset1 - offset2
 
-    col_names = get_col_names(file, bstr, ncols, offset_idx, colint)
+    col_names = get_col_names(file, bstr, ncols, offset_idx, ncols_int)
 
     tsv = []
 
@@ -256,7 +257,7 @@ def convert_file(file: Path, dest: Path = None):
 
     offset_idx = file_size - offset2 # equivalent to `ms.Seek`, line 89
 
-    tsv = get_rows(file, bstr, tsv, nrows, offset_idx, colint, colstr)
+    tsv = get_rows(file, bstr, tsv, nrows, offset_idx, ncols_int, ncols_str)
 
     out = Path(f'{file.stem}.tsv' if dest is None else dest)
     out.write_text(
@@ -287,7 +288,6 @@ def batch_convert_dir(directory: Path):
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    print(args)
 
     if args.subcommand == 'file':
         convert_file(args.ies_file, args.output)
