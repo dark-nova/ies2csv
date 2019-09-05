@@ -21,6 +21,7 @@ parser_file = subparser.add_parser(
 parser_file.add_argument(
     '--output', '-o',
     required = False,
+    help = 'An optional file to output to; overrides default file name',
     type = Path
     )
 parser_file.add_argument(
@@ -86,6 +87,10 @@ def get_col_names(
 
     Returns:
         dict: with key = index and value = column name
+
+    Raises:
+        Exception: if the `.ies` file is corrupt or invalid
+
     """
     col_names = {}
     for _ in range(ncols):
@@ -114,8 +119,8 @@ def get_col_names(
                 if col_names[col_idx + ncols_int]:
                     raise Exception(
                         f'IES file {file} is invalid: '
-                        f'{col_names[col_idx+ncols_int]} is not null')
-                    return False
+                        f'{col_names[col_idx+ncols_int]} is not null'
+                        )
             except KeyError:
                 col_names[col_idx + ncols_int] = col_name
 
@@ -134,11 +139,14 @@ def get_rows(
         tsv (list): the tsv in list form
         nrows (int): number of rows
         offset: offset to specify columns
-        ncols_int (int): offset to specific columns
-        ncols_str (int): offset to specific columns
+        ncols_int (int): number of numeric columns
+        ncols_str (int): number of string columns
 
     Returns:
         list: `tsv` with rows populated
+
+    Raises:
+        Exception: if the `.ies` file is corrupt or invalid
 
     """
     for _ in range(nrows):
@@ -200,7 +208,7 @@ def convert_file(file: Path, dest: Path = None):
         bool: True if successful; False otherwise
 
     Raises:
-        Exception: if the file was corrupt in any way
+        Exception: if the `.ies` file is corrupt or invalid
 
     """
     bstr = file.read_bytes()
@@ -259,10 +267,18 @@ def convert_file(file: Path, dest: Path = None):
 
     tsv = get_rows(file, bstr, tsv, nrows, offset_idx, ncols_int, ncols_str)
 
-    out = Path(f'{file.stem}.tsv' if dest is None else dest)
+    out = Path(
+        f'{file.stem}.tsv'
+        if dest is None
+        else dest
+        )
     out.write_text(
         LINE.join(
-            [SEPARATOR.join(line) for line in tsv]
+            [
+                SEPARATOR.join(line)
+                for line
+                in tsv
+                ]
             )
         )
 

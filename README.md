@@ -9,7 +9,7 @@ This `ies2csv` is a fork of the [original utility](https://github.com/Doddler/ie
 Each resulting `.tsv` file has a structure like so:
 - `ncols_int`: number of numeric/integer fields, like `ClassID` (ID) and `NeedCount` (flag)
 - `ncols_str`: the rest of the fields, usually strings
-- `ncols = ncols_int + ncols_str`
+- i.e. `ncols = ncols_int + ncols_str`
 
 ## Usage
 
@@ -31,6 +31,7 @@ optional arguments:
 
 ### File-based operations
 ```
+$ python ies2csv.py file -h
 usage: ies2csv.py file [-h] [--output OUTPUT] ies_file
 
 positional arguments:
@@ -39,9 +40,13 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --output OUTPUT, -o OUTPUT
+                        An optional file to output to; overrides default file
+                        name
 ```
 
 ⚠ Default behavior creates a `.tsv` file with the same 'stem' name.
+
+If `OUTPUT` is specified, the tsv contents will be written to `OUTPUT`.
 
 ### Batch operations
 ```
